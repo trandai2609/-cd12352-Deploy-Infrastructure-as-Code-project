@@ -1,0 +1,11 @@
+[
+    {
+        "ParameterKey": "ExerciseName",
+        "ParameterValue": "Project1"
+    }
+    // ,
+    // {
+    //     "ParameterKey": "AsgDesiredCapacity",
+    //     "ParameterValue": "1"
+    // }
+]
