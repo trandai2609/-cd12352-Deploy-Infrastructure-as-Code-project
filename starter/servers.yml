@@ -13,13 +13,10 @@ Resources:
         Fn::ImportValue:
           !Sub "${EnvironmentName}-VPCID"
       SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-      SecurityGroupEgress:
-        - IpProtocol: -1
-          CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
 
   WebServerSecGroup:
     Type: AWS::EC2::SecurityGroup
@@ -32,11 +29,7 @@ Resources:
       - IpProtocol: tcp
         FromPort: 80
         ToPort: 80
-        CidrIp: 0.0.0.0/0
-      - IpProtocol: tcp
-        FromPort: 22
-        ToPort: 22
-        CidrIp: 0.0.0.0/0
+        SourceSecurityGroupId: !Ref LBSecGroup
       SecurityGroupEgress:
       - IpProtocol: tcp
         FromPort: 0
@@ -47,7 +40,7 @@ Resources:
     Type: AWS::EC2::LaunchTemplate
     Properties: 
       LaunchTemplateData:
-        ImageId: ami-066784287e358dad1
+        ImageId: ami-0c7217cdde317cfec
         SecurityGroupIds:
           - !Ref WebServerSecGroup
         InstanceType: t2.micro
@@ -59,10 +52,23 @@ Resources:
           Fn::Base64: !Sub |
             #!/bin/bash
             apt-get update -y
-            apt-get install apache2 -y
-            systemctl start apache2.service
-            cd /var/www/html
-            echo "Hello Udacity" > index.html
+            sudo apt-get install nginx -y
+            service nginx start
+
+            WEB_DIR="/var/www/html"
+            cat <<EOF > index.html
+            <!DOCTYPE html>
+            <html>
+              <body>
+                  <h1>It works! Udagram, Udacity</h1>
+              </body>
+            </html>
+            EOF
+
+            sudo rm -r $WEB_DIR/index.*
+            sudo cp index.html $WEB_DIR
+
+            sudo systemctl reload nginx
 
   WebAppGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -113,13 +119,13 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckIntervalSeconds: 30
-      HealthCheckPath: /
+      HealthCheckPath: /index.html  
       HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 8
-      HealthyThresholdCount: 5
+      HealthyThresholdCount: 2  
+      UnhealthyThresholdCount: 2
       Port: 80
       Protocol: HTTP
-      UnhealthyThresholdCount: 2
       VpcId: 
         Fn::ImportValue:
           !Sub "${EnvironmentName}-VPCID"
